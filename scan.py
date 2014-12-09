@@ -4,8 +4,10 @@ import os
 import sys
 import mimetypes
 import importlib
+import pprint
 
-_MIME_MODULES = "mimes"
+_MOD_PACKAGE = "mimes"
+_MOD_DEFAULT = "default"
 
 def catalog(start_path):
 
@@ -21,9 +23,9 @@ def catalog(start_path):
             typ, enc = mimetypes.guess_type(fle_name)
 
             if typ in types:
-                types[typ].append(fle_name)
+                types[typ].append(fle_path)
             else:
-                types[typ] = [fle_name]
+                types[typ] = [fle_path]
 
     return types
 
@@ -33,19 +35,24 @@ def inspect(types):
 
     for typ in types:
 
-        mod_name = "{}.{}".format(_MIME_MODULES, str(typ).lower().replace('/', '.'))
+        mod_levels = [_MOD_PACKAGE] + str(typ).lower().split('/')
 
-        try:
-            mod = importlib.import_module(mod_name)
-            info.update(mod.get_info(types[typ]))
-        except ImportError:
-            print("No module '{}' to inspect '{}'".format(mod_name, typ))
+        while mod_levels:
+            try:
+                mod_name = '.'.join(mod_levels)
+                mod = importlib.import_module(mod_name)
+            except ImportError:
+                print("No module '{}' to inspect '{}'".format(mod_name, typ))
+                mod_levels.pop()
+            else:
+                info.update(mod.get_info(types[typ]))
+                break
 
     return info
 
 if __name__ == "__main__":
 
     types = catalog(sys.argv[1])
-    print(types)
     infos = inspect(types)
-    print(infos)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(infos)

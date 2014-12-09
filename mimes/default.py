@@ -1,6 +1,8 @@
 import magic
 import mimetypes
 
+_ENCODING = "utf-8"
+
 def get_info(file_paths):
 
     infos = {}
@@ -9,10 +11,9 @@ def get_info(file_paths):
 
         info = {}
         typ, enc = mimetypes.guess_type(file_path)
-        mgc = magic.from_file(file_path, mime=True)
+        mgc = magic.from_file(file_path, mime=True).decode(_ENCODING)
         info['mime'] = typ
         info['magic'] = mgc
-        print(info)
         infos[file_path] = info
 
     return infos
