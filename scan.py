@@ -3,9 +3,9 @@
 import os
 import sys
 import mimetypes
+import importlib
 
-_MIME_MV = ["audio/flac"]
-_MIME_RM = ["image/jpeg"]
+_MIME_MODULES = "mimes"
 
 def catalog(start_path):
 
@@ -19,7 +19,6 @@ def catalog(start_path):
 
             fle_path = os.path.join(root, fle_name)
             typ, enc = mimetypes.guess_type(fle_name)
-            print("{}, {}".format(fle_path, typ))
 
             if typ in types:
                 types[typ].append(fle_name)
@@ -30,11 +29,23 @@ def catalog(start_path):
 
 def inspect(types):
 
-    file_info = {}
+    info = {}
 
-    return file_info
+    for typ in types:
+
+        mod_name = "{}.{}".format(_MIME_MODULES, str(typ).lower().replace('/', '.'))
+
+        try:
+            mod = importlib.import_module(mod_name)
+            info.update(mod.get_info(types[typ]))
+        except ImportError:
+            print("No module '{}' to inspect '{}'".format(mod_name, typ))
+
+    return info
 
 if __name__ == "__main__":
 
     types = catalog(sys.argv[1])
     print(types)
+    infos = inspect(types)
+    print(infos)
