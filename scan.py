@@ -50,9 +50,16 @@ def inspect(types):
 
     return info
 
+def print_encrypted(infos):
+
+    paths = list(infos.keys())
+    paths.sort()
+
+    for path in paths:
+        print("{} - {}".format(path, infos[path]['encrypted']))
+
 if __name__ == "__main__":
 
     types = catalog(sys.argv[1])
     infos = inspect(types)
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(infos)
+    print_encrypted(infos)

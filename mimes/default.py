@@ -22,7 +22,7 @@ def get_info(file_paths):
             elif (typ == mgc):
                 info['encrypted'] = "no"
             else:
-                info['encrypted'] = "maybe"
+                info['encrypted'] = "probably"
         else:
             info['encrypted'] = "no"
         infos[file_path] = info
