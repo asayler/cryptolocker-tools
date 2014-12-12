@@ -73,20 +73,34 @@ def print_encrypted(infos):
 
     paths = list(infos.keys())
     paths.sort()
-    counts = {}
+    type_counts = {}
+    type_counts['Total'] = {}
 
     print("\nFile List:")
     for path in paths:
         state = infos[path]['encrypted']
-        if state in counts:
-            counts[state] += 1
+        if state in type_counts['Total']:
+            type_counts['Total'][state] += 1
         else:
-            counts[state] = 0
+            type_counts['Total'][state] = 1
+        typ = infos[path]['mime']
+        if typ in type_counts:
+            if state in type_counts[typ]:
+                type_counts[typ][state] += 1
+            else:
+                type_counts[typ][state] = 1
+        else:
+            type_counts[typ] = {}
+            type_counts[typ][state] = 1
         print("{} - {}".format(path, state))
 
     print("\nEncryption Stats:", file=sys.stderr)
-    for state in counts:
-        print("{} - {}".format(state, counts[state]), file=sys.stderr)
+    for typ in type_counts:
+        sys.stderr.write("{}: ".format(typ))
+        sys.stderr.write("count = {}".format(sum(type_counts[typ].values())))
+        for state in type_counts[typ]:
+            sys.stderr.write(", {} = {}".format(state, type_counts[typ][state]))
+        sys.stderr.write("\n")
 
 def copy_files(infos, src_root, dst_root):
 
