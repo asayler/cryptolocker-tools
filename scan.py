@@ -4,22 +4,20 @@ import os
 import sys
 import mimetypes
 import importlib
-import pprint
+import shutil
 
 _MOD_PACKAGE = "mimes"
-_MOD_DEFAULT = "default"
+_SKIP_MIMES = [None, 'application/x-info', 'application/javascript', 'text/html']
+_SKIP_NAMES = ['DECRYPT_INSTRUCTION.TXT']
 
 _VERBOSE = True
+_OVERWRITE = True
 
-_SKIP_MIMES = [None, 'application/x-info', 'application/javascript', 'text/html']
-
-def catalog(start_path):
-
-    start_path = os.path.abspath(start_path)
+def catalog(src_root):
 
     types = {}
 
-    for root, dirs, files in os.walk(start_path):
+    for root, dirs, files in os.walk(src_root):
 
         for fle_name in files:
 
@@ -37,6 +35,9 @@ def inspect(types):
 
     info = {}
 
+    if(_VERBOSE):
+        print("\nInspecting Types:", file=sys.stderr)
+
     for typ in types:
 
         if typ in _SKIP_MIMES:
@@ -51,12 +52,11 @@ def inspect(types):
                 mod_name = '.'.join(mod_levels)
                 mod = importlib.import_module(mod_name)
             except ImportError:
-                if(_VERBOSE):
-                    print("No module '{}' to inspect '{}'".format(mod_name, typ), file=sys.stderr)
                 mod_levels.pop()
             else:
                 if(_VERBOSE):
-                    print("Using module '{}' to inspect {} '{}'".format(mod_name, len(types[typ]), typ),
+                    print("Using module '{}' to inspect {} of type {}".format(mod_name,
+                                                                              len(types[typ]), typ),
                           file=sys.stderr)
                 info.update(mod.get_info(types[typ]))
                 break
@@ -65,8 +65,9 @@ def inspect(types):
 
 def print_types(types):
 
+    print("\nFile Type Stats:", file=sys.stderr)
     for typ in types:
-        print("{} - {}".format(typ, len(types[typ])))
+        print("{} - {}".format(typ, len(types[typ])), file=sys.stderr)
 
 def print_encrypted(infos):
 
@@ -74,7 +75,7 @@ def print_encrypted(infos):
     paths.sort()
     counts = {}
 
-    print("\nFiles:")
+    print("\nFile List:")
     for path in paths:
         state = infos[path]['encrypted']
         if state in counts:
@@ -83,21 +84,44 @@ def print_encrypted(infos):
             counts[state] = 0
         print("{} - {}".format(path, state))
 
-    print("\nEncrypted Counts:")
+    print("\nEncryption Stats:", file=sys.stderr)
     for state in counts:
-        print("{} - {}".format(state, counts[state]))
+        print("{} - {}".format(state, counts[state]), file=sys.stderr)
 
-def copy_files(infos, enc_state, dest):
+def copy_files(infos, src_root, dst_root):
 
     paths = list(infos.keys())
     paths.sort()
 
-    for path in paths:
-        print("Copying {}".format(path))
+    for src_path in paths:
+        state = infos[src_path]['encrypted']
+        rel_path = os.path.relpath(src_path, start=src_root)
+        dst_path = os.path.join(dst_root, state, rel_path)
+        dst_dir = os.path.dirname(dst_path)
+        src_name = os.path.basename(src_path)
+        if src_name in _SKIP_NAMES:
+            print("Skipping '{}'".format(src_path), file=sys.stderr)
+            continue
+        else:
+            print("Copying '{}' to '{}'".format(src_path, dst_path), file=sys.stderr)
+        if os.path.exists(dst_path):
+            if _OVERWRITE:
+                print("'{}' Already Exists, Overwriting".format(dst_path), file=sys.stderr)
+                os.remove(dst_path)
+                shutil.copy2(src_path, dst_path)
+            else:
+                print("'{}' Already Exists, Skipping".format(dst_path), file=sys.stderr)
+        else:
+            os.makedirs(dst_dir, exist_ok=True)
+            shutil.copy2(src_path, dst_path)
 
 if __name__ == "__main__":
 
-    types = catalog(sys.argv[1])
+    src_root = os.path.abspath(sys.argv[1])
+    dst_root = os.path.abspath(sys.argv[2])
+
+    types = catalog(src_root)
     print_types(types)
     infos = inspect(types)
     print_encrypted(infos)
+    copy_files(infos, src_root, dst_root)
